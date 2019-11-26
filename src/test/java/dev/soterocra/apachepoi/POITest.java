@@ -8,9 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
@@ -20,19 +18,17 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import dev.soterocra.apachepoi.entities.People;
 
 class POITest {
 
 	private static final String FILE_NAME = "C:\\Users\\rsoteror\\Documents\\Workspace\\Lab\\apache-poi\\src\\test\\resources\\Sample.xlsx";
+	private final ObjectMapper mapper = new ObjectMapper();
 
 	@Test
 	void readExcelFile() throws IOException {
-		
-		TreeMap<String, String> testeHashMap = new TreeMap<>();
-		
-		testeHashMap.put("oi1", "1");
-		testeHashMap.put("oi2", "2");
 
 		List<People> peopleList = new ArrayList<>();
 
@@ -40,17 +36,19 @@ class POITest {
 
 		Workbook workbook = new XSSFWorkbook(excelFile);
 		Sheet peopleDataSheet = workbook.getSheet("people-data");
-		
+
 		Iterator<Row> iterator = peopleDataSheet.iterator();
 
-		TreeMap<String, Object> headers = null;
-		List<TreeMap<String, Object>> result = null;
+		List<String> headers = null;
+		List<HashMap<String, Object>> result = null;
 
 		while (iterator.hasNext()) {
 			Row currentRow = iterator.next();
 
-			if (headers == null)
+			if (headers == null) {
 				headers = generateHeaders(currentRow);
+				continue;
+			}
 
 			Iterator<Cell> cellIterator = currentRow.iterator();
 
@@ -74,21 +72,26 @@ class POITest {
 				}
 			}
 
-			TreeMap<String, Object> tmpPeopleMap = SerializationUtils.clone(headers);
-			
-			tmpPeopleMap.entrySet().stream().forEach(k -> tmpPeopleMap.put(k.getKey(), tmpAccumulate.remove(0)));
-			System.out.println();
+			Map<String, Object> tmpPeopleMap = new HashMap<>();
+
+			for (int i = 0; i < headers.size(); i++) {
+				tmpPeopleMap.put(headers.get(i), tmpAccumulate.get(i));
+			}
+
+			peopleList.add(mapper.convertValue(tmpPeopleMap, People.class));
 		}
 
+		System.out.println(new ObjectMapper().writeValueAsString(peopleList));
+		
 	}
 
-	TreeMap<String, Object> generateHeaders(Row firstRow) {
+	List<String> generateHeaders(Row firstRow) {
 
-		TreeMap<String, Object> headers = new TreeMap<>();
+		List<String> headers = new ArrayList<>();
 		Iterator<Cell> cellIterator = firstRow.iterator();
 
 		while (cellIterator.hasNext()) {
-			headers.put(cellIterator.next().getStringCellValue(), null);
+			headers.add(cellIterator.next().getStringCellValue());
 		}
 
 		return headers;
